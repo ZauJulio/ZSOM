@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 def coorToHex(x, y):
     """Convert Cartesian coordinates to hexagonal tiling coordinates.
@@ -47,15 +46,15 @@ class SOM:
 
     def __initMinMax__(self):
         min, max = [], []
-        for i in range(self.data.values.shape[1]):
-            min.append(np.min(self.data.values[:, i]))
-            max.append(np.max(self.data.values[:, i]))
+        for i in range(self.data.shape[1]):
+            min.append(np.min(self.data[:, i]))
+            max.append(np.max(self.data[:, i]))
         return (min, max)
 
     def __initNodes__(self, minMax):
         for x in range(self.netWidth):
             for y in range(self.netHeight):
-                self.nodeList.append(Node(x, y, self.data.values.shape[1],
+                self.nodeList.append(Node(x, y, self.data.shape[1],
                                           self.netHeight,
                                           self.netWidth,
                                           PBC=self.PBC,
@@ -66,11 +65,11 @@ class SOM:
         """ Init input of update with bootstrap-like method """
         self.inputVec = []
         for i in range(self.epochs):
-            self.inputVec.append(self.data.values[np.random.randint(0, self.data.values.shape[0]), :].reshape(np.array([self.data.values.shape[1]])))
+            self.inputVec.append(self.data[np.random.randint(0, self.data.shape[0]), :].reshape(np.array([self.data.shape[1]])))
 
     def __start__(self, startLearnRate):
         if (self.epochs == -1):
-            self.epochs = self.data.values.shape[0]*10
+            self.epochs = self.data.shape[0]*10
         else:
             self.epochs = self.epochs
 
@@ -81,7 +80,6 @@ class SOM:
 
     def __train__(self):
         self.__initVector__()
-        # self.inputVec = self.data.values
         for i in range(self.epochs):
             self.__verbose__(i)
             bmu = self.find_bmu(self.inputVec[i])
@@ -116,7 +114,7 @@ class SOM:
                 bmu = node
         return bmu
 
-    def ACT(self):
+    def struct(self):
         """ [ [x,y], [weights], [data] ] """
         self.act = []
         for x in range(self.netHeight):
@@ -125,15 +123,13 @@ class SOM:
                 cy = round(cy, 8)
                 self.act.append([[cx, cy], [], []])
 
-        i = 0
-        for day in self.data.index:
-            neuron = self.find_bmu(self.data.loc[day].values)
+        for i, sample in enumerate(self.data):
+            neuron = self.find_bmu(sample)
             posNeuron = [neuron.pos[0], round(neuron.pos[1], 8)]
+            # Returns the index of the corresponding element with the position in the list
             k = sum([i if posNeuron == self.act[i][0] else 0 for i in range(len(self.act))])
             self.act[k][1] = neuron.weights
-            self.act[k][2].append(self.data.loc[day])
-            i+=1
-
+            self.act[k][2].append(i)
 
 class Node:
     """ Single Kohonen SOM Node class. """

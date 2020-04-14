@@ -9,7 +9,7 @@ setup(
   author = 'Zaú Júlio A. Galvão',
   author_email = 'zauhdf@gmail.com',
   url = 'https://github.com/ZauJulio/ZSOM',
-  download_url = 'https://github.com/ZauJulio/ZSOM_v_01.tar.gz',
+  download_url = 'https://github.com/ZauJulio/ZSOM/archive/v1.0.1.tar.gz',
   keywords = ['SOM', 'Self-Organizing Maps', 'Robust implementation'],
   install_requires=[
           'numpy'
