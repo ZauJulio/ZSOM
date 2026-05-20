@@ -110,6 +110,7 @@ Every node updates proportionally to its neighborhood influence:
 ```math
 \Delta W_{i,j} = \eta(t) \cdot h(i,j,t) \cdot (x - W_{i,j})
 ```
+
 ```math
 W_{i,j} \leftarrow W_{i,j} + \Delta W_{i,j}
 ```
