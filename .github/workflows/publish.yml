@@ -28,30 +28,40 @@ jobs:
       - name: Read version
         id: version
         run: |
-          python - <<'PY'
+          VERSION=$(python - <<'PY'
           import tomllib
           from pathlib import Path
 
           data = tomllib.loads(Path("pyproject.toml").read_text())
-          version = data["project"]["version"]
-          print(f"version={version}")
-          with open("$GITHUB_OUTPUT", "a", encoding="utf-8") as f:
-            f.write(f"version={version}\n")
+          print(data["project"]["version"])
           PY
+          )
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Create and push tag
+      - name: Create and push tag/branch
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           TAG="v${VERSION}"
+          BRANCH="v${VERSION}"
+          if [ -z "${VERSION}" ]; then
+            echo "Version is empty. Check pyproject.toml parsing."
+            exit 1
+          fi
           if git rev-parse -q --verify "refs/tags/${TAG}"; then
             echo "Tag ${TAG} already exists. Skipping tag creation."
-            exit 0
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag "${TAG}"
+            git push origin "${TAG}"
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "${TAG}"
-          git push origin "${TAG}"
+          if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+            echo "Branch ${BRANCH} already exists. Skipping branch creation."
+          else
+            git branch "${BRANCH}"
+            git push origin "${BRANCH}"
+          fi
 
       - name: Build package
         run: python -m build
