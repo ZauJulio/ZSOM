@@ -1,0 +1,10 @@
+numpy>=1.24
+matplotlib>=3.7
+
+[dev]
+jupyter
+ipykernel
+pytest
+
+[numba]
+numba>=0.59

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zsom"
+version = "1.0.0"
+description = "Self-Organizing Map in pure NumPy with optional Numba acceleration"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "zaujulio" }]
+keywords = ["som", "self-organizing-map", "machine-learning", "clustering", "neural-network"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+numba = ["numba>=0.59"]
+dev = ["jupyter", "ipykernel", "pytest"]
+matplotlib = ["matplotlib>=3.7"]
+
+
+[project.urls]
+Homepage = "https://github.com/zaujulio/zsom"
+Repository = "https://github.com/zaujulio/zsom"
+
+[tool.setuptools.packages.find]
+include = ["zsom*"]

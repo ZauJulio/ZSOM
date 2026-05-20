@@ -1,0 +1,323 @@
+Metadata-Version: 2.4
+Name: zsom
+Version: 1.0.0
+Summary: Self-Organizing Map in pure NumPy with optional Numba acceleration
+Author: zaujulio
+License-Expression: MIT
+Project-URL: Homepage, https://github.com/zaujulio/zsom
+Project-URL: Repository, https://github.com/zaujulio/zsom
+Keywords: som,self-organizing-map,machine-learning,clustering,neural-network
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Education
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Scientific/Engineering :: Visualization
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.24
+Requires-Dist: matplotlib>=3.7
+Provides-Extra: numba
+Requires-Dist: numba>=0.59; extra == "numba"
+Provides-Extra: dev
+Requires-Dist: jupyter; extra == "dev"
+Requires-Dist: ipykernel; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Dynamic: license-file
+
+# ZSOM
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.0.0-orange.svg)](https://pypi.org/project/zsom/)
+[![NumPy](https://img.shields.io/badge/numpy-%E2%89%A51.24-blue.svg)](https://numpy.org)
+[![Numba optional](https://img.shields.io/badge/numba-optional-yellow.svg)](https://numba.pydata.org)
+
+**Self-Organizing Map in pure NumPy with optional Numba acceleration.**
+
+ZSOM is a fast, educational, and production-ready implementation of Kohonen's Self-Organizing Map. It projects high-dimensional input data onto a 2D discrete grid while preserving the topological structure of the input space — all without backpropagation.
+
+---
+
+## Features
+
+- **Vectorized batch SOM** — ~3× faster than sequential online updates via fully broadcasted NumPy operations
+- **Optional Numba JIT** — automatic detection; transparent 2–5× additional speed-up on the hot loops
+- **Multiple topologies** — square (4-connected) and hexagonal (6-connected) grids
+- **5 distance metrics** — Euclidean, Manhattan, Chebyshev, Cosine, Minkowski (configurable *p*)
+- **5 built-in datasets** — clusters, rings, Swiss roll, jittered grid, and a 3D procedural bunny
+- **PCA weight initialization** — avoids dead zones by placing initial weights within the data distribution
+- **Adaptive learning rate** — derivative-based lr scheduling for better convergence
+- **Error metrics** — qE, MAE, MSE, RMSE, MAPE with per-node aggregates
+- **4-panel visualization** — data + BMU projections, U-Matrix grid, activation heatmap, 3D view
+- **Publication-quality legends** — per-class markers, colour bars, 3D data + mesh legend
+- **Full type annotations** — `Literal` types for topology, metric, init method
+- **CLI + Python API + Jupyter notebook** — use from the terminal, scripts, or interactive notebooks
+
+---
+
+## How It Works
+
+### Distance Metrics
+
+The distance metric determines how the SOM measures similarity between input vectors and weight nodes. Different metrics produce different Voronoi cell shapes and are suited to different data types:
+
+| Metric | Formula | Voronoi shape | Best for |
+|--------|---------|---------------|----------|
+| **Euclidean (L2)** | `√Σ(wᵢ − pᵢ)²` | Circular | Continuous data, comparable scales (sensor readings, spatial coords) |
+| **Manhattan (L1)** | `Σ\|wᵢ − pᵢ\|` | Diamond | Sparse/tabular data, outlier robustness |
+| **Chebyshev (L∞)** | `max\|wᵢ − pᵢ\|` | Square | Worst-case tolerance, grid movement |
+| **Cosine** | `1 − cos(w, p)` | Angular | Text/NLP embeddings, TF-IDF, spectral data |
+| **Minkowski (Lp)** | `(Σ\|wᵢ − pᵢ\|ᵖ)^(1/p)` | Interpolated | Custom L1↔L2↔L∞ trade-off |
+
+**Choosing a metric:**
+- Start with **Euclidean** (default) for most numeric data.
+- Use **Manhattan** when your data has outliers or very high dimensionality.
+- Use **Cosine** when *direction* matters more than *magnitude* (e.g. text vectors).
+- Use **Minkowski(p=3)** as a compromise between L2 sensitivity and L1 robustness.
+
+### Learning Rate
+
+The learning rate (`lr`) controls how much weight vectors move toward input samples each epoch:
+
+- **Global ordering phase** (early epochs, high lr ~0.5–1.0): nodes spread across the input space and establish topological order.
+- **Fine-tuning phase** (later epochs, low lr): nodes converge to final positions, refining cluster boundaries.
+
+By default, lr decays linearly from `lr0` to `lr0 × 0.2` over training.
+
+With `adaptive_lr=True`, the decay rate adjusts based on the *derivative* of quantization error:
+- **Steep improvement** (large negative dqE/dt) → lr decays *slower*, preserving momentum
+- **Plateau** (dqE/dt ≈ 0) → lr decays *faster*, preventing overshooting
+
+The cumulative quantization error (*integral*) is tracked in `som.error_history_` for convergence analysis.
+
+### Grid Topologies
+
+| Topology | Neighbours | Pros | Cons |
+|----------|------------|------|------|
+| **Square** | 4 | Fast (precomputed grid distances), Numba-eligible | Fewer neighbours, more boundary effects |
+| **Hexagonal** | 6 | More uniform coverage, better surface fitting | Slightly slower, no Numba acceleration |
+
+**Choosing a topology:**
+- Start with **square** — it's faster and works well for most problems.
+- Use **hex** when you need higher-quality surface fitting (e.g. 3D data) or publication-quality visualizations.
+
+### Weight Initialization
+
+| Method | Description |
+|--------|-------------|
+| `random` | Uniform random in [0, 1]^d — simple but may produce dead zones |
+| `pca` | Spans the first 2 principal components of the data — avoids dead zones, faster convergence |
+
+---
+
+## Installation
+
+### With pip
+
+```bash
+pip install -e .
+```
+
+### With uv
+
+```bash
+uv pip install -e .
+```
+
+### With Numba acceleration
+
+```bash
+pip install -e ".[numba]"
+# or
+uv pip install -e ".[numba]"
+```
+
+> **Note:** Numba is completely optional. ZSOM works perfectly with pure NumPy.
+> When Numba is installed, ZSOM auto-detects it and uses JIT-compiled parallel
+> kernels for the distance computation and batch weight update — the two most
+> expensive operations.
+
+---
+
+## Quick Start
+
+### CLI
+
+```bash
+# Default: 12×12 square SOM on Gaussian clusters
+zsom
+
+# 3D bunny with 14×14 grid
+zsom --dataset bunny --grid 14
+
+# Hexagonal topology on concentric rings
+zsom --dataset ring --topology hex
+
+# Manhattan distance on Swiss roll
+zsom --metric manhattan --dataset swiss
+
+# Static plot (no animation)
+zsom --static
+
+# Disable Numba (use pure NumPy)
+zsom --no-numba
+
+# PCA initialization
+zsom --init pca
+
+# Adaptive learning rate
+zsom --adaptive-lr
+
+# Custom parameters
+zsom --grid 15 --epochs 120 --lr 0.6 --n 500 --seed 7
+```
+
+### Python API
+
+```python
+import numpy as np
+from zsom import SOM, make_clusters, plot_static
+
+rng = np.random.default_rng(42)
+pts, labels = make_clusters(300, rng)
+
+som = SOM(12, 12, pts.shape[1], rng)
+snapshots = som.fit(pts, epochs=80, lr0=0.5)
+
+plot_static(som, pts, labels, dataset_name="clusters")
+```
+
+### Jupyter Notebook
+
+```bash
+jupyter notebook examples/notebook.ipynb
+```
+
+The notebook includes all datasets, hex topology, metric comparisons, and a Numba benchmark.
+
+---
+
+## Numba Acceleration
+
+ZSOM transparently accelerates training when [Numba](https://numba.pydata.org) is available:
+
+| Operation | NumPy | Numba | Speedup |
+|-----------|-------|-------|---------|
+| Distance matrix (n×w×h) | Broadcast + `linalg.norm` | `@njit(parallel=True)` loops | ~2–4× |
+| Batch update (BMU + neighborhood) | Vectorized accumulation | Fused `@njit(parallel=True)` | ~2–5× |
+
+**How it works:**
+- At import time, `zsom.numba_accel` tries `import numba`
+- If successful, it compiles two `@njit` kernels with `parallel=True` and `cache=True`
+- The `SOM` class checks `HAS_NUMBA` at init and routes to compiled kernels automatically
+- You can force-disable with `SOM(..., use_numba=False)` or `zsom --no-numba`
+- Numba is only used for **square topology + Euclidean metric** (the common case)
+
+```python
+from zsom import HAS_NUMBA
+print(f"Numba: {'enabled' if HAS_NUMBA else 'not installed'}")
+```
+
+---
+
+## CLI Reference
+
+```
+usage: zsom [-h] [--dataset {clusters,ring,swiss,grid,bunny}]
+            [--topology {square,hex}]
+            [--metric {euclidean,manhattan,chebyshev,cosine,minkowski}]
+            [--minkowski-p FLOAT] [--grid INT] [--epochs INT]
+            [--lr FLOAT] [--n INT] [--static] [--seed INT]
+            [--no-numba] [--init {random,pca}] [--adaptive-lr]
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dataset` | `clusters` | Input dataset |
+| `--topology` | `square` | Grid topology (`square` / `hex`) |
+| `--metric` | `euclidean` | Distance metric |
+| `--minkowski-p` | `3.0` | Minkowski exponent |
+| `--grid` | `12` | Grid side length (N → N×N map) |
+| `--epochs` | `80` | Training epochs |
+| `--lr` | `0.5` | Initial learning rate |
+| `--n` | `300` | Number of input points |
+| `--static` | off | Show final state only (no animation) |
+| `--seed` | `42` | Random seed |
+| `--no-numba` | off | Force pure NumPy backend |
+| `--init` | `random` | Weight initialization (`random` / `pca`) |
+| `--adaptive-lr` | off | Derivative-based adaptive lr scheduling |
+
+---
+
+## Project Structure
+
+```
+zsom/
+├── zsom/                  # Core package
+│   ├── __init__.py        # Public API + CLI entry point
+│   ├── __main__.py        # python -m zsom support
+│   ├── som.py             # SOM class + hex grid + PCA init
+│   ├── metrics.py         # Distance functions
+│   ├── datasets.py        # Data generators
+│   ├── error_metrics.py   # qE, MAE, MSE, RMSE, MAPE
+│   ├── numba_accel.py     # Optional JIT kernels
+│   └── visualization.py   # Plotting + animation
+├── examples/              # Ready-to-run demos
+│   ├── demo_clusters.py
+│   ├── demo_bunny.py
+│   ├── demo_all.py
+│   └── notebook.ipynb
+├── som.py                 # Backward-compat shim
+├── pyproject.toml         # PEP 621 metadata
+├── setup.py               # pip install -e . shim
+├── setup.cfg              # setuptools config
+└── README.md
+```
+
+---
+
+## Datasets
+
+| Name | Dim | Description |
+|------|-----|-------------|
+| `clusters` | 2D | Three isotropic Gaussian blobs |
+| `ring` | 2D | Two concentric rings (non-convex) |
+| `swiss` | 2D | Swiss roll manifold projection |
+| `grid` | 2D | Jittered 5×5 uniform lattice |
+| `bunny` | 3D | Procedural Stanford-bunny-like point cloud |
+
+---
+
+## Supported Python Versions
+
+| Version | Status |
+|---------|--------|
+| Python 3.10 | ✅ Supported |
+| Python 3.11 | ✅ Supported |
+| Python 3.12 | ✅ Supported |
+| Python 3.13 | ✅ Supported |
+| Python 3.14 | ✅ Supported |
+
+---
+
+## Dependencies
+
+**Required:**
+- `numpy >= 1.24`
+- `matplotlib >= 3.7`
+
+**Optional:**
+- `numba >= 0.59` — JIT acceleration for training
+
+---
+
+## License
+
+MIT
