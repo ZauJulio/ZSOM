@@ -54,13 +54,15 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag "${TAG}"
-            git push origin "${TAG}"
+            git push origin "refs/tags/${TAG}"
           fi
           if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
             echo "Branch ${BRANCH} already exists. Skipping branch creation."
           else
             git branch "${BRANCH}"
-            git push origin "${BRANCH}"
+            # Fully qualify the refspec: once the tag exists, a bare "${BRANCH}"
+            # matches both refs/tags and refs/heads and git refuses the push.
+            git push origin "refs/heads/${BRANCH}:refs/heads/${BRANCH}"
           fi
 
       - name: Build package
