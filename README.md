@@ -67,6 +67,19 @@ A SOM learns a topology-preserving mapping **f: ℝᵈ → ℤ²** from high-dim
 3. Weight update   ΔW_{i,j} = η(t) · h(i,j,t) · (x − W_{i,j})
 ```
 
+```mermaid
+flowchart TD
+  Init["Initialize weights<br/>random or PCA"] --> BMU["BMU selection<br/>argmin dist(W, x)"]
+  BMU --> Nbr["Neighbourhood<br/>h = exp(−d_grid² / 2σ²)"]
+  Nbr --> Upd["Weight update<br/>ΔW = η·h·(x − W)"]
+  Upd --> More{"More samples?"}
+  More -->|"yes"| BMU
+  More -->|"no"| Decay["Decay η(t), σ(t)"]
+  Decay --> Done{"t = T?"}
+  Done -->|"no · next epoch"| BMU
+  Done -->|"yes"| Map["Topology-preserving map<br/>U-Matrix · activation heatmap"]
+```
+
 Both the learning rate **η(t)** and the neighborhood radius **σ(t)** decay monotonically over epochs, producing a natural two-phase dynamic: early epochs establish global topology, late epochs refine individual prototypes. After training, nearby grid nodes represent similar inputs — enabling cluster visualization, anomaly scoring, and density estimation without any labels.
 
 ---
@@ -374,6 +387,26 @@ Models are arranged in a grid of up to 3 columns. Each panel shows the point clo
 ---
 
 ## Project structure
+
+```mermaid
+flowchart LR
+  subgraph Data["examples/datasets.py"]
+    DS["clusters · ring · swiss<br/>grid · obj (OBJ / STL)"]
+  end
+  subgraph Core["zsom/ core · pure NumPy"]
+    SOM["som.py — SOM<br/>hex grid · PCA init"]
+    MET["metrics.py<br/>L1 · L2 · L∞ · cosine · Lp"]
+    ERR["error_metrics.py<br/>QE · MAE · MSE · RMSE · MAPE"]
+  end
+  ACC["numba_accel.py<br/>@njit kernels · optional"]
+  VIZ["visualization.py<br/>4-panel figure · animation"]
+  DS --> SOM
+  MET --> SOM
+  SOM -->|"square + Euclidean"| ACC
+  ACC --> SOM
+  SOM --> ERR
+  SOM --> VIZ
+```
 
 ```
 zsom/

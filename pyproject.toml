@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zsom"
-version = "2.0.0"
+version = "2.0.1"
 description = "Self-Organizing Map in pure NumPy with optional Numba acceleration"
 readme = "README.md"
 license = "MIT"

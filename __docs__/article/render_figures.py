@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, RegularPolygon
 
 OUTPUT_DIR = Path(__file__).parent
 METRICS_DIR = OUTPUT_DIR / "metrics"
@@ -349,12 +349,26 @@ def main() -> None:
     ax.set_ylim(2.5, -0.5)
     save(fig, "umatrix_example.png")
 
-    # 12) U-Matrix heatmap ridge
+    # 12) U-Matrix heatmap — cluster basins separated by high-distance ridges.
+    # The ridge network is the Voronoi boundary between basin centres: cells far
+    # from any boundary read low; cells where two basins meet read high. Drawn
+    # with a reversed colormap so higher distance = darker ridge.
     fig, ax = plt.subplots(figsize=(3.0, 2.6))
     ax.set_title("U-Matrix heatmap")
-    heat = np.ones((20, 20)) * 0.2
-    heat[:, 9:11] = 0.9
-    ax.imshow(heat, cmap="magma")
+    n = 64
+    gx, gy = np.meshgrid(np.linspace(0, 1, n), np.linspace(0, 1, n))
+    basins = np.array([[0.26, 0.30], [0.72, 0.24], [0.52, 0.74], [0.84, 0.68]])
+    grid_pts = np.stack([gx.ravel(), gy.ravel()], axis=1)
+    dists = np.linalg.norm(grid_pts[:, None, :] - basins[None, :, :], axis=2)
+    nearest_two = np.sort(dists, axis=1)[:, :2]
+    gap = (nearest_two[:, 1] - nearest_two[:, 0]).reshape(n, n)
+    # An exponential falloff keeps a sharp ridge at the boundary (gap → 0) but a
+    # long tail, so basin interiors carry a gradient instead of reading flat —
+    # closer to a real U-Matrix, where distance rises smoothly toward the edges.
+    umatrix = np.exp(-gap / 0.16)
+    # vmin below 0 pulls the basins off pure-white into warm magma tones so the
+    # figure sits with its dark-themed siblings instead of glaring.
+    ax.imshow(umatrix, cmap="magma_r", origin="lower", vmin=-0.2, vmax=1.0)
     ax.set_xticks([])
     ax.set_yticks([])
     save(fig, "umatrix_heatmap.png")
@@ -442,25 +456,60 @@ def main() -> None:
     ax.set_ylim(-0.3, 2.3)
     save(fig, "square_topology.png")
 
-    fig, ax = plt.subplots(figsize=(3.0, 2.6))
+    # Honeycomb: a tiling of pointy-top hexagonal cells. One central cell and its
+    # six equidistant neighbours are highlighted to show the 6-neighbour structure.
+    fig, ax = plt.subplots(figsize=(3.2, 2.9))
     ax.set_title("Hex topology")
     ax.set_aspect("equal")
-    ax.set_xticks([])
-    ax.set_yticks([])
-    coords = []
-    for i in range(3):
-        for j in range(3):
-            x = i + 0.5 * (j % 2)
-            y = j * np.sqrt(3) / 2
-            coords.append((x, y))
-            ax.plot(x, y, "ko", ms=4)
-    for (x1, y1) in coords:
-        for (x2, y2) in coords:
-            d = np.hypot(x1 - x2, y1 - y2)
-            if 0.7 < d < 1.1:
-                ax.plot([x1, x2], [y1, y2], color="0.6", lw=0.6)
-    ax.set_xlim(-0.3, 3.0)
-    ax.set_ylim(-0.3, 2.8)
+    ax.axis("off")
+
+    R = 1.0  # centre-to-vertex radius
+    dx = np.sqrt(3) * R  # horizontal spacing between cells in a row
+    dy = 1.5 * R  # vertical spacing between rows
+    rows, cols = 5, 5
+
+    centers: dict[tuple[int, int], tuple[float, float]] = {}
+    for row in range(rows):
+        for col in range(cols):
+            cx = col * dx + (row % 2) * dx / 2
+            cy = row * dy
+            centers[(row, col)] = (cx, cy)
+
+    center_cell = (2, 2)
+    ccx, ccy = centers[center_cell]
+    neighbours = [
+        rc
+        for rc, (x, y) in centers.items()
+        if rc != center_cell and abs(np.hypot(x - ccx, y - ccy) - dx) < 1e-6
+    ]
+
+    for rc, (cx, cy) in centers.items():
+        if rc == center_cell:
+            face, edge = "#7c1d2e", "#ee4540"
+        elif rc in neighbours:
+            face, edge = "#2b2550", "#818cf8"
+        else:
+            face, edge = "#161616", "#3a3a3a"
+        ax.add_patch(
+            RegularPolygon(
+                (cx, cy), 6, radius=R, orientation=0,
+                facecolor=face, edgecolor=edge, linewidth=1.0,
+            )
+        )
+
+    # Edges from the central node to each equidistant neighbour.
+    for rc in neighbours:
+        nx, ny = centers[rc]
+        ax.plot([ccx, nx], [ccy, ny], color="#ee4540", lw=1.0, zorder=2)
+
+    for rc, (cx, cy) in centers.items():
+        color = "#ffffff" if rc == center_cell or rc in neighbours else "#9a9a9a"
+        ax.plot(cx, cy, "o", ms=4, color=color, zorder=3)
+
+    xs = [x for x, _ in centers.values()]
+    ys = [y for _, y in centers.values()]
+    ax.set_xlim(min(xs) - R, max(xs) + R)
+    ax.set_ylim(min(ys) - R, max(ys) + R)
     save(fig, "hex_topology.png")
 
 

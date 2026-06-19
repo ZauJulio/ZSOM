@@ -55,7 +55,7 @@ def run(static: bool = False, object_name: ObjectName = "vader") -> None:
 
 if __name__ == "__main__":
     static = "--static" in sys.argv
-    object_name: ObjectName = "bunny"
+    object_name: ObjectName = "vader"
     
     for arg in sys.argv[1:]:
         if arg == "--static":
